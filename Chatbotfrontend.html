@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sana AI Chatbot</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <style>
+      /* --- Start of CSS --- */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: #f9fafb;
+        margin: 0;
+        padding: 0;
+      }
+      
+      /* CSS Variables from sanaLanguage.html for consistent theming */
+      :root {
+        --primary-green: #10b981;
+        --primary-green-dark: #059669;
+        --text-dark: #1f2937;
+        --text-light: #6b7280;
+        --background-light: #f9fafb;
+        --border-color: #e5e7eb;
+      }
+
+      /* Chatbot widget container */
+      .chat-container-wrapper {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: flex-end;
+      }
+      
+      /* Chat toggle button with bouncing animation */
+      .chat-toggle-button {
+        background: var(--primary-green);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        font-size: 2em;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, background 0.3s ease;
+        animation: chatbot-bounce 1.5s infinite ease-in-out;
+        margin-top: 15px;
+      }
+      
+      .chat-toggle-button:hover {
+        transform: scale(1.08);
+        background: var(--primary-green-dark);
+        animation: none; /* Stop bounce on hover */
+      }
+      
+      @keyframes chatbot-bounce {
+        0%, 100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-5px);
+        }
+      }
+
+      /* Chatbot container with open/close transition */
+      .chat-container {
+        width: 380px;
+        height: 500px;
+        background: white;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease;
+        transform: scale(0);
+        transform-origin: bottom right;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .chat-container.active {
+        transform: scale(1);
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      @media (max-width: 600px) {
+        .chat-container {
+            width: 90vw;
+            height: 80vh;
+            max-width: none;
+        }
+      }
+
+      .chat-header {
+        background: var(--primary-green);
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+      }
+
+      .header-title {
+        font-size: 1.2em;
+        font-weight: 600;
+        margin: 0;
+      }
+      
+      .voice-mode-toggle {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.8em;
+      }
+
+      .toggle-switch {
+          position: relative;
+          width: 40px;
+          height: 20px;
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.3s;
+      }
+
+      .toggle-switch.active {
+          background: rgba(255, 255, 255, 0.8);
+      }
+
+      .toggle-slider {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 16px;
+          height: 16px;
+          background: white;
+          border-radius: 50%;
+          transition: all 0.3s;
+      }
+
+      .toggle-switch.active .toggle-slider {
+          transform: translateX(20px);
+          background: var(--primary-green);
+      }
+
+      .chat-box {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: #fdfdfd;
+      }
+      
+      /* Sana AI Chatbot specific message styles */
+      .message {
+        max-width: 85%;
+        padding: 12px 16px;
+        border-radius: 20px;
+        line-height: 1.4;
+        animation: fadeInUp 0.3s ease;
+      }
+
+      @keyframes fadeInUp {
+          from {
+              opacity: 0;
+              transform: translateY(10px);
+          }
+          to {
+              opacity: 1;
+              transform: translateY(0);
+          }
+      }
+
+      .user-message {
+        background: #e2e8f0;
+        color: var(--text-dark);
+        align-self: flex-end;
+        border-bottom-right-radius: 8px;
+      }
+
+      .bot-message {
+        background: #f0f4f8;
+        color: var(--text-dark);
+        align-self: flex-start;
+        border-bottom-left-radius: 8px;
+        position: relative;
+      }
+
+      .bot-message.typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #f0f4f8;
+        color: var(--text-light);
+      }
+
+      /* Dot blink animation */
+      .typing-indicator .dot {
+        width: 8px;
+        height: 8px;
+        background: var(--text-light);
+        border-radius: 50%;
+        animation: dot-blink 1.4s infinite linear;
+      }
+
+      .typing-indicator .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .typing-indicator .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes dot-blink {
+        0%, 100% {
+          opacity: 0.2;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      .bot-message.voice-response {
+          border-left: 4px solid var(--primary-green);
+          background: linear-gradient(90deg, #f8f9ff 0%, #f8f9fa 100%);
+      }
+
+      .voice-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 0.75em;
+          color: var(--primary-green);
+          margin-bottom: 3px;
+      }
+
+      .voice-wave {
+          width: 2px;
+          height: 10px;
+          background: var(--primary-green);
+          border-radius: 1px;
+          animation: wave 1s ease-in-out infinite;
+      }
+
+      .voice-wave:nth-child(2) { animation-delay: 0.1s; }
+      .voice-wave:nth-child(3) { animation-delay: 0.2s; }
+      .voice-wave:nth-child(4) { animation-delay: 0.3s; }
+
+      @keyframes wave {
+          0%, 100% { height: 3px; }
+          50% { height: 10px; }
+      }
+
+      .input-area {
+        display: flex;
+        padding: 15px;
+        border-top: 1px solid var(--border-color);
+        align-items: center;
+        gap: 10px;
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+      }
+
+      .input-area input {
+        flex: 1;
+        border: 2px solid #e9ecef;
+        border-radius: 20px;
+        padding: 10px 15px;
+        outline: none;
+        font-size: 0.9em;
+        transition: all 0.3s;
+      }
+
+      .input-area input:focus {
+        border-color: var(--primary-green);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+      }
+
+      .input-area button {
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .send-btn {
+        background: var(--primary-green);
+        color: #fff;
+      }
+
+      .send-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+      }
+
+      .voice-btn {
+          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+          color: #fff;
+      }
+
+      .voice-btn.recording {
+          animation: pulse 1.5s infinite;
+          background: linear-gradient(135deg, #ee5a24 0%, #c44569 100%);
+      }
+
+      @keyframes pulse {
+          0% {
+              box-shadow: 0 0 0 0 rgba(238, 90, 36, 0.4);
+              transform: scale(1);
+          }
+          70% {
+              box-shadow: 0 0 0 15px rgba(238, 90, 36, 0);
+              transform: scale(1.05);
+          }
+          100% {
+              box-shadow: 0 0 0 0 rgba(238, 90, 36, 0);
+              transform: scale(1);
+          }
+      }
+
+      .voice-btn:hover {
+          transform: scale(1.05);
+          box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+      }
+      
+      .status-indicator {
+          font-size: 0.8em;
+          color: var(--primary-green);
+          text-align: center;
+          padding: 6px;
+          margin: 0 15px;
+          background: rgba(16, 185, 129, 0.1);
+          border-radius: 15px;
+          display: none;
+      }
+
+      .status-indicator.show {
+          display: block;
+          animation: fadeInUp 0.3s ease;
+      }
+
+      /* Typing indicator spinner */
+      .message .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(16, 185, 129, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--primary-green);
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 6px;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container-wrapper" id="sana-ai-widget-container">
+      <button id="chat-toggle-button" class="chat-toggle-button">💬</button>
+
+      <div class="chat-container" id="chat-container">
+        <div class="chat-header">
+          <h1 class="header-title">🤖 AI Assistant</h1>
+          <div class="voice-mode-toggle">
+            <span>Voice Mode</span>
+            <div class="toggle-switch" id="voice-toggle">
+              <div class="toggle-slider"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-indicator" id="status-indicator"></div>
+
+        <div class="chat-box" id="chat-box">
+          <div class="message bot-message">
+            👋 Hello! I'm your AI assistant. You can chat with me by typing or speaking. Toggle voice mode on to get spoken responses!
+          </div>
+        </div>
+
+        <div class="input-area">
+          <input
+            type="text"
+            id="user-input"
+            placeholder="Ask me anything..."
+          />
+          <button id="send-btn" class="send-btn">➤</button>
+          <button id="voice-btn" class="voice-btn">🎤</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      const chatBox = document.getElementById('chat-box');
+      const userInput = document.getElementById('user-input');
+      const sendBtn = document.getElementById('send-btn');
+      const voiceBtn = document.getElementById('voice-btn');
+      const voiceToggle = document.getElementById('voice-toggle');
+      const statusIndicator = document.getElementById('status-indicator');
+      const chatToggleButton = document.getElementById('chat-toggle-button');
+      const chatContainer = document.getElementById('chat-container');
+
+      const SERVER_URL = 'http://127.0.0.1:5000'; // Placeholder URL
+
+      let isRecording = false;
+      let recognition = null;
+      let audioContext = null;
+      let currentAudioSource = null;
+      let isProcessingVoiceMessage = false;
+      let voiceModeEnabled = false;
+      let conversationHistory = [];
+      let currentUtterance = null;
+
+      chatToggleButton.addEventListener('click', () => {
+          chatContainer.classList.toggle('active');
+          if (chatContainer.classList.contains('active')) {
+              chatToggleButton.textContent = '✖';
+              chatToggleButton.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)';
+              userInput.focus();
+          } else {
+              chatToggleButton.textContent = '💬';
+              chatToggleButton.style.background = 'var(--primary-green)';
+              stopCurrentSpeech();
+          }
+      });
+
+      voiceToggle.addEventListener('click', () => {
+          voiceModeEnabled = !voiceModeEnabled;
+          voiceToggle.classList.toggle('active', voiceModeEnabled);
+          showStatus(voiceModeEnabled ? '🔊 Voice mode enabled' : '🔇 Voice mode disabled');
+
+          if (!voiceModeEnabled) {
+              stopCurrentSpeech();
+          }
+      });
+
+      function showStatus(message) {
+          statusIndicator.textContent = message;
+          statusIndicator.classList.add('show');
+          setTimeout(() => {
+              statusIndicator.classList.remove('show');
+          }, 3000);
+      }
+
+      function appendMessage(text, className, isVoiceResponse = false) {
+          const messageDiv = document.createElement('div');
+          messageDiv.classList.add('message', className);
+
+          if (isVoiceResponse) {
+              messageDiv.classList.add('voice-response');
+              const voiceIndicator = document.createElement('div');
+              voiceIndicator.className = 'voice-indicator';
+              voiceIndicator.innerHTML = `
+                  🔊 Speaking...
+                  <div class="voice-wave"></div>
+                  <div class="voice-wave"></div>
+                  <div class="voice-wave"></div>
+                  <div class="voice-wave"></div>
+              `;
+              messageDiv.appendChild(voiceIndicator);
+          }
+
+          const textContent = document.createElement('div');
+          textContent.textContent = text;
+          messageDiv.appendChild(textContent);
+
+          chatBox.appendChild(messageDiv);
+          chatBox.scrollTop = chatBox.scrollHeight;
+          return messageDiv;
+      }
+
+      function addLoadingSpinner(messageDiv) {
+          const spinner = document.createElement('span');
+          spinner.className = 'spinner';
+          const loadingText = document.createElement('span');
+          loadingText.textContent = 'Thinking...';
+          messageDiv.appendChild(spinner);
+          messageDiv.appendChild(loadingText);
+          return { spinner, loadingText };
+      }
+
+      function removeLoadingSpinner(elements) {
+          if (elements.spinner) elements.spinner.remove();
+          if (elements.loadingText) elements.loadingText.remove();
+      }
+
+      function stopCurrentSpeech() {
+          if (currentUtterance) {
+              speechSynthesis.cancel();
+              currentUtterance = null;
+          }
+
+          if (currentAudioSource) {
+              try {
+                  currentAudioSource.stop();
+              } catch (error) {
+                  console.log('Audio already stopped');
+              }
+              currentAudioSource = null;
+          }
+      }
+
+      function speakText(text, messageDiv = null) {
+          if (!voiceModeEnabled) return;
+
+          stopCurrentSpeech();
+
+          currentUtterance = new SpeechSynthesisUtterance(text);
+          currentUtterance.rate = 0.9;
+          currentUtterance.pitch = 1;
+          currentUtterance.volume = 0.8;
+
+          const voices = speechSynthesis.getVoices();
+          let preferredVoice = null;
+
+          const femaleVoiceNames = ['Zira', 'Ava', 'Helena', 'Google US English Female', 'Microsoft Zira', 'Google UK English Female'];
+          for (const name of femaleVoiceNames) {
+              preferredVoice = voices.find(voice => voice.lang.startsWith('en') && voice.name.includes(name));
+              if (preferredVoice) break;
+          }
+
+          if (!preferredVoice) {
+              preferredVoice = voices.find(voice => voice.lang.startsWith('en'));
+          }
+
+          if (preferredVoice) {
+              currentUtterance.voice = preferredVoice;
+          }
+
+          currentUtterance.onend = () => {
+              currentUtterance = null;
+              if (messageDiv) {
+                  const voiceIndicator = messageDiv.querySelector('.voice-indicator');
+                  if (voiceIndicator) {
+                      voiceIndicator.style.display = 'none';
+                  }
+              }
+          };
+
+          currentUtterance.onerror = (event) => {
+              console.error('Speech synthesis error:', event.error);
+              currentUtterance = null;
+              if (messageDiv) {
+                  const voiceIndicator = messageDiv.querySelector('.voice-indicator');
+                  if (voiceIndicator) {
+                      voiceIndicator.style.display = 'none';
+                  }
+              }
+          };
+
+          speechSynthesis.speak(currentUtterance);
+      }
+
+      async function sendMessage(message, isVoiceInput = false) {
+          stopCurrentSpeech();
+
+          conversationHistory.push({ role: 'user', content: message });
+
+          appendMessage(message, 'user-message');
+          userInput.value = '';
+
+          const botMessageDiv = appendMessage('', 'bot-message', voiceModeEnabled && isVoiceInput);
+          const loadingElements = addLoadingSpinner(botMessageDiv);
+
+          try {
+              const response = await fetch(`${SERVER_URL}/chatbot`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      message: message,
+                      conversation_history: conversationHistory.slice(-10)
+                  }),
+              });
+
+              removeLoadingSpinner(loadingElements);
+
+              if (!response.ok) {
+                  const errorData = await response.json();
+                  botMessageDiv.lastElementChild.textContent = `Server Error: ${errorData.error}`;
+                  return;
+              }
+
+              const data = await response.json();
+              if (data.response) {
+                  botMessageDiv.lastElementChild.textContent = data.response;
+
+                  conversationHistory.push({ role: 'assistant', content: data.response });
+
+                  if (voiceModeEnabled && (isVoiceInput || voiceModeEnabled)) {
+                      speakText(data.response, botMessageDiv);
+                  } else {
+                      const voiceIndicator = botMessageDiv.querySelector('.voice-indicator');
+                      if (voiceIndicator) {
+                          voiceIndicator.style.display = 'none';
+                      }
+                  }
+              } else if (data.error) {
+                  botMessageDiv.lastElementChild.textContent = `Error: ${data.error}`;
+              }
+
+          } catch (error) {
+              removeLoadingSpinner(loadingElements);
+              botMessageDiv.lastElementChild.textContent = 'An error occurred while connecting to the server.';
+              console.error('Error:', error);
+          }
+      }
+
+      function toggleVoiceInput() {
+          if (isRecording) {
+              stopVoiceInput();
+          } else {
+              startVoiceInput();
+          }
+      }
+
+      function startVoiceInput() {
+          if (!('webkitSpeechRecognition' in window)) {
+              showStatus("Your browser does not support the Web Speech API. Please use Google Chrome.");
+              return;
+          }
+
+          stopCurrentSpeech();
+
+          recognition = new webkitSpeechRecognition();
+          recognition.continuous = false;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+
+          let finalTranscript = '';
+          let hasProcessedFinalResult = false;
+
+          recognition.onstart = () => {
+              isRecording = true;
+              voiceBtn.classList.add('recording');
+              userInput.placeholder = '🎤 Listening... Speak now!';
+              showStatus('🎤 Listening for your voice...');
+              hasProcessedFinalResult = false;
+          };
+
+          recognition.onresult = (event) => {
+              let interimTranscript = '';
+              for (let i = event.resultIndex; i < event.results.length; ++i) {
+                  if (event.results[i].isFinal) {
+                      finalTranscript += event.results[i][0].transcript;
+                  } else {
+                      interimTranscript += event.results[i][0].transcript;
+                  }
+              }
+              userInput.value = finalTranscript || interimTranscript;
+
+              if (finalTranscript !== '' && !hasProcessedFinalResult) {
+                  hasProcessedFinalResult = true;
+                  showStatus('✨ Got it! Processing your request...');
+                  sendMessage(finalTranscript, true);
+              }
+          };
+
+          recognition.onerror = (event) => {
+              console.error('Speech recognition error:', event.error);
+              showStatus('❌ Speech recognition error. Please try again.');
+              stopVoiceInput();
+          };
+
+          recognition.onend = () => {
+              stopVoiceInput();
+          };
+
+          recognition.start();
+      }
+
+      function stopVoiceInput() {
+          if (recognition) {
+              recognition.stop();
+          }
+          isRecording = false;
+          voiceBtn.classList.remove('recording');
+          userInput.placeholder = 'Ask me anything...';
+      }
+
+      sendBtn.addEventListener('click', () => {
+          const message = userInput.value.trim();
+          if (message) sendMessage(message, false);
+      });
+
+      userInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+              const message = userInput.value.trim();
+              if (message) sendMessage(message, false);
+          }
+      });
+
+      voiceBtn.addEventListener('click', toggleVoiceInput);
+
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+          speechSynthesis.onvoiceschanged = () => {
+              console.log('Voices loaded:', speechSynthesis.getVoices().length);
+          };
+      }
+
+      window.addEventListener('beforeunload', () => {
+          stopCurrentSpeech();
+      });
+    </script>
+  </body>
+</html>
